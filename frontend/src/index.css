@@ -1,0 +1,6 @@
+body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 0; }
+.container { max-width: 900px; margin: 24px auto; padding: 16px; }
+button { cursor: pointer; padding: 8px 12px; }
+input, textarea { padding: 8px; width: 100%; margin-bottom: 8px; box-sizing: border-box; }
+nav a { margin-right: 10px; text-decoration: none; }
+.store-card { border: 1px solid #ddd; padding: 12px; margin-bottom: 8px; border-radius: 6px; }

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Store Rating App with Auth</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h2 { margin-top: 30px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    table, th, td { border: 1px solid #ccc; }
+    th, td { padding: 8px; text-align: left; }
+    .form-group { margin-bottom: 10px; }
+    input, select { padding: 5px; width: 100%; }
+    button { padding: 6px 10px; margin: 2px; cursor: pointer; }
+    #dashboard { display: none; }
+    #authForms { max-width: 300px; margin-bottom: 30px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Store Rating App</h1>
+
+  <!-- AUTH SECTION -->
+  <div id="authForms">
+    <h2>Signup</h2>
+    <form id="signupForm">
+      <div class="form-group"><input type="text" id="signupUsername" placeholder="Username" required></div>
+      <div class="form-group"><input type="password" id="signupPassword" placeholder="Password" required></div>
+      <button type="submit">Signup</button>
+    </form>
+
+    <h2>Login</h2>
+    <form id="loginForm">
+      <div class="form-group"><input type="text" id="loginUsername" placeholder="Username" required></div>
+      <div class="form-group"><input type="password" id="loginPassword" placeholder="Password" required></div>
+      <button type="submit">Login</button>
+    </form>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard">
+    <button onclick="logout()">Logout</button>
+    <h2>Welcome, <span id="currentUser"></span> 🎉</h2>
+
+    <!-- Add Store Form -->
+    <h2>Add Store</h2>
+    <form id="storeForm">
+      <div class="form-group">
+        <input type="text" id="storeName" placeholder="Store Name" required>
+      </div>
+      <div class="form-group">
+        <input type="text" id="storeAddress" placeholder="Store Address" required>
+      </div>
+      <button type="submit">Add Store</button>
+    </form>
+
+    <!-- Store List -->
+    <h2>Stores</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Store Name</th>
+          <th>Address</th>
+          <th>Rating</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="storeTableBody"></tbody>
+    </table>
+
+    <!-- Edit Store Form -->
+    <div id="editSection" style="display:none;">
+      <h2>Edit Store</h2>
+      <form id="editForm">
+        <input type="hidden" id="editId">
+        <div class="form-group">
+          <input type="text" id="editName" placeholder="Store Name" required>
+        </div>
+        <div class="form-group">
+          <input type="text" id="editAddress" placeholder="Store Address" required>
+        </div>
+        <button type="submit">Update Store</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // ========= AUTH (LOCALSTORAGE) =========
+    let users = JSON.parse(localStorage.getItem("users")) || [];
+    let currentUser = localStorage.getItem("currentUser") || null;
+
+    const signupForm = document.getElementById("signupForm");
+    const loginForm = document.getElementById("loginForm");
+    const authForms = document.getElementById("authForms");
+    const dashboard = document.getElementById("dashboard");
+    const currentUserSpan = document.getElementById("currentUser");
+
+    function showDashboard() {
+      authForms.style.display = "none";
+      dashboard.style.display = "block";
+      currentUserSpan.textContent = currentUser;
+    }
+
+    function showAuth() {
+      authForms.style.display = "block";
+      dashboard.style.display = "none";
+    }
+
+    signupForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const username = document.getElementById("signupUsername").value;
+      const password = document.getElementById("signupPassword").value;
+      if (users.find(u => u.username === username)) {
+        alert("Username already exists!");
+        return;
+      }
+      users.push({ username, password });
+      localStorage.setItem("users", JSON.stringify(users));
+      alert("Signup successful! Please login.");
+      signupForm.reset();
+    });
+
+    loginForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const username = document.getElementById("loginUsername").value;
+      const password = document.getElementById("loginPassword").value;
+      const user = users.find(u => u.username === username && u.password === password);
+      if (user) {
+        currentUser = username;
+        localStorage.setItem("currentUser", username);
+        showDashboard();
+        renderStores();
+      } else {
+        alert("Invalid credentials");
+      }
+    });
+
+    function logout() {
+      currentUser = null;
+      localStorage.removeItem("currentUser");
+      showAuth();
+    }
+
+    // ========= STORE CRUD =========
+    let stores = JSON.parse(localStorage.getItem("stores")) || [];
+    let nextId = stores.length ? Math.max(...stores.map(s => s.id)) + 1 : 1;
+
+    const storeForm = document.getElementById("storeForm");
+    const storeTableBody = document.getElementById("storeTableBody");
+    const editSection = document.getElementById("editSection");
+    const editForm = document.getElementById("editForm");
+
+    function renderStores() {
+      storeTableBody.innerHTML = "";
+      stores.forEach(store => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${store.id}</td>
+          <td>${store.name}</td>
+          <td>${store.address}</td>
+          <td>
+            <select onchange="rateStore(${store.id}, this.value)">
+              <option value="">Rate</option>
+              ${[1,2,3,4,5].map(n => 
+                `<option value="${n}" ${store.rating==n ? "selected":""}>${n}</option>`
+              ).join("")}
+            </select>
+          </td>
+          <td>
+            <button onclick="editStore(${store.id})">Edit</button>
+            <button onclick="deleteStore(${store.id})">Delete</button>
+          </td>
+        `;
+        storeTableBody.appendChild(tr);
+      });
+      localStorage.setItem("stores", JSON.stringify(stores));
+    }
+
+    storeForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const name = document.getElementById("storeName").value;
+      const address = document.getElementById("storeAddress").value;
+      stores.push({ id: nextId++, name, address, rating: null });
+      storeForm.reset();
+      renderStores();
+    });
+
+    function editStore(id) {
+      const store = stores.find(s => s.id === id);
+      document.getElementById("editId").value = store.id;
+      document.getElementById("editName").value = store.name;
+      document.getElementById("editAddress").value = store.address;
+      editSection.style.display = "block";
+    }
+
+    editForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const id = +document.getElementById("editId").value;
+      const name = document.getElementById("editName").value;
+      const address = document.getElementById("editAddress").value;
+      const store = stores.find(s => s.id === id);
+      store.name = name;
+      store.address = address;
+      editSection.style.display = "none";
+      renderStores();
+    });
+
+    function deleteStore(id) {
+      stores = stores.filter(s => s.id !== id);
+      renderStores();
+    }
+
+    function rateStore(id, value) {
+      const store = stores.find(s => s.id === id);
+      store.rating = value ? parseInt(value) : null;
+      renderStores();
+    }
+
+    // Expose for inline HTML
+    window.editStore = editStore;
+    window.deleteStore = deleteStore;
+    window.rateStore = rateStore;
+
+    // ========= INIT =========
+    if (currentUser) {
+      showDashboard();
+      renderStores();
+    } else {
+      showAuth();
+    }
+  </script>
+</body>
+</html>
